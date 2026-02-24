@@ -143,6 +143,30 @@
       margin-bottom: 10px;
       align-items: center;
     }
+    .relationship-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+      align-items: center;
+      width: 100%;
+    }
+
+    .relationship-row > div {
+      flex: 1; 
+    }
+
+    .relationship-row select {
+      width: 100%; 
+      min-width: 150px; 
+    }
+
+    .relationship-row > div:last-child {
+      flex: 0.5;  
+    }
+
+    .relationship-row button {
+      white-space: nowrap;
+    }
   </style>
 </head>
 <body>
@@ -201,15 +225,49 @@
     <h3>Create New Food Web</h3>
     <span class="close-btn" onclick="closeAdminForm()">&times;</span>
   </div>
+    <div id="deleteSection" class="form-section mb-3" style="border-color: #dc3545; display: none;">
+    <h4 class="text-danger">🗑️ Delete Food Web</h4>
+    <div class="row">
+      <div class="col-md-5">
+        <label class="form-label">Select Ecosystem</label>
+        <select class="form-control" id="deleteEcosystem">
+          <option value="">-- Choose ecosystem --</option>
+        </select>
+      </div>
+      <div class="col-md-5">
+        <label class="form-label">Select Food Web</label>
+        <select class="form-control" id="deleteWeb" disabled>
+          <option value="">-- First select ecosystem --</option>
+        </select>
+      </div>
+      <div class="col-md-2 d-flex align-items-end">
+        <button type="button" class="btn btn-danger" id="deleteWebBtn" disabled onclick="confirmDeleteWeb()">Delete Web</button>
+      </div>
+    </div>
+    <div id="deleteMessage" class="mt-2"></div>
+  </div>
   <form id="webForm">
     <div class="form-section">
       <h4>Ecosystem</h4>
+      
+      <!-- Option to select existing ecosystem -->
       <div class="mb-3">
-        <label for="ecosystem" class="form-label">Select Ecosystem</label>
-        <select class="form-control" id="ecosystem" required>
-          <option value="">Choose...</option>
+        <label class="form-label">Select Existing Ecosystem</label>
+        <select class="form-control" id="ecosystem">
+          <option value="">-- Choose existing --</option>
         </select>
       </div>
+      
+      <div class="text-center mb-2">- OR -</div>
+      
+      <!-- Option to create new ecosystem -->
+      <div class="mb-3">
+        <label class="form-label">Create New Ecosystem</label>
+        <input type="text" class="form-control mb-2" id="newEcosystemName" placeholder="Ecosystem Name">
+        <textarea class="form-control" id="newEcosystemDescription" placeholder="Description (optional)" rows="2"></textarea>
+        <button type="button" class="btn btn-secondary mt-2" onclick="createNewEcosystem()">Create Ecosystem</button>
+      </div>
+      
       <div class="mb-3">
         <label for="webName" class="form-label">Food Web Name</label>
         <input type="text" class="form-control" id="webName" required>
@@ -240,20 +298,31 @@
       <h4>Feeding Relationships</h4>
       <div id="relationshipsList">
         <div class="relationship-row">
-          <select class="form-control predator-select" name="predator[]" required>
-            <option value="">Predator</option>
-          </select>
-          <span>→</span>
-          <select class="form-control prey-select" name="prey[]" required>
-            <option value="">Prey</option>
-          </select>
-          <select class="form-control" name="feed_type[]" required>
-            <option value="">Type</option>
-            <option value="herbivore">Herbivore</option>
-            <option value="carnivore">Carnivore</option>
-          </select>
-          <button type="button" class="btn btn-danger btn-sm" onclick="removeRelationship(this)">Remove</button>
-        </div>
+          <div class="d-flex align-items-center gap-2">
+            <div>
+              <small class="text-muted">Prey (gets eaten)</small>
+              <select class="form-control prey-select" name="prey[]" required>
+                <option value="">Select prey...</option>
+              </select>
+            </div>
+            <span class="fw-bold">→</span>
+            <div>
+              <small class="text-muted">Predator (eats)</small>
+              <select class="form-control predator-select" name="predator[]" required>
+                <option value="">Select predator...</option>
+              </select>
+            </div>
+            <div>
+              <small class="text-muted">Type</small>
+              <select class="form-control" name="feed_type[]" required>
+                <option value="">Type</option>
+                <option value="herbivore">Herbivore</option>
+                <option value="carnivore">Carnivore</option>
+              </select>
+            </div>
+            <button type="button" class="btn btn-danger btn-sm" onclick="removeRelationship(this)">Remove</button>
+          </div>
+</div>
       </div>
       <button type="button" class="btn btn-secondary" onclick="addRelationship()">+ Add Relationship</button>
     </div>
@@ -342,8 +411,124 @@ function closeLoginModal() {
 
 function showAdminForm() {
   loadEcosystemsForForm();
+  loadEcosystemsForDelete(); // Load ecosystems for delete dropdown
   showOverlay();
   adminForm.style.display = "block";
+  
+  // Show delete section if admin is logged in
+  if (isAdmin) {
+    document.getElementById("deleteSection").style.display = "block";
+  } else {
+    document.getElementById("deleteSection").style.display = "none";
+  }
+}
+
+// ------------------
+// DELETE WEB FUNCTIONS
+// ------------------
+async function loadEcosystemsForDelete() {
+  const response = await fetch("/ecosystems");
+  const ecosystems = await response.json();
+  
+  const select = document.getElementById("deleteEcosystem");
+  select.innerHTML = '<option value="">-- Choose ecosystem --</option>';
+  ecosystems.forEach(e => {
+    select.innerHTML += `<option value="${e.id}">${e.name}</option>`;
+  });
+  
+  // Reset web dropdown
+  document.getElementById("deleteWeb").innerHTML = '<option value="">-- First select ecosystem --</option>';
+  document.getElementById("deleteWeb").disabled = true;
+  document.getElementById("deleteWebBtn").disabled = true;
+}
+
+// Load webs when ecosystem is selected
+document.getElementById("deleteEcosystem").addEventListener("change", async function(e) {
+  const ecosystemId = e.target.value;
+  const webSelect = document.getElementById("deleteWeb");
+  const deleteBtn = document.getElementById("deleteWebBtn");
+  
+  if (!ecosystemId) {
+    webSelect.innerHTML = '<option value="">-- First select ecosystem --</option>';
+    webSelect.disabled = true;
+    deleteBtn.disabled = true;
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/ecosystems/${ecosystemId}/webs`);
+    const data = await response.json();
+    
+    webSelect.innerHTML = '<option value="">-- Select web to delete --</option>';
+    data.webs.forEach(web => {
+      webSelect.innerHTML += `<option value="${web.id}">${web.name}</option>`;
+    });
+    webSelect.disabled = false;
+    deleteBtn.disabled = true; // Still disabled until web selected
+  } catch (error) {
+    console.error("Error loading webs:", error);
+  }
+});
+
+// Enable delete button when web is selected
+document.getElementById("deleteWeb").addEventListener("change", function(e) {
+  const deleteBtn = document.getElementById("deleteWebBtn");
+  deleteBtn.disabled = !e.target.value;
+});
+
+// Confirm and delete web
+async function confirmDeleteWeb() {
+  const ecosystemId = document.getElementById("deleteEcosystem").value;
+  const webId = document.getElementById("deleteWeb").value;
+  const webName = document.getElementById("deleteWeb").selectedOptions[0].text;
+  
+  if (!ecosystemId || !webId) {
+    document.getElementById("deleteMessage").innerHTML = '<span class="text-danger">Please select an ecosystem and web</span>';
+    return;
+  }
+  
+  if (confirm(`Are you sure you want to delete "${webName}"? This action cannot be undone!`)) {
+    await deleteWeb(webId);
+  }
+}
+
+async function deleteWeb(webId) {
+  const deleteMsg = document.getElementById("deleteMessage");
+  
+  try {
+    const response = await fetch(`/admin/webs/${webId}`, {
+      method: "DELETE"
+    });
+    
+    if (response.ok) {
+      deleteMsg.innerHTML = '<span class="text-success">✅ Food web successfully deleted!</span>';
+      
+      // Refresh the web dropdown
+      const ecosystemId = document.getElementById("deleteEcosystem").value;
+      const webResponse = await fetch(`/ecosystems/${ecosystemId}/webs`);
+      const data = await webResponse.json();
+      
+      const webSelect = document.getElementById("deleteWeb");
+      webSelect.innerHTML = '<option value="">-- Select web to delete --</option>';
+      data.webs.forEach(web => {
+        webSelect.innerHTML += `<option value="${web.id}">${web.name}</option>`;
+      });
+      
+      // Also refresh the main page buttons
+      loadEcosystemButtons();
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        deleteMsg.innerHTML = '';
+      }, 3000);
+    } else {
+      const error = await response.json();
+      deleteMsg.innerHTML = `<span class="text-danger">❌ Error: ${error.detail || "Unknown error"}</span>`;
+    }
+  } catch (error) {
+    console.error("Error:", error);
+    deleteMsg.innerHTML = '<span class="text-danger">❌ Network error</span>';
+  }
 }
 
 function closeAdminForm() {
@@ -463,19 +648,41 @@ async function loadEcosystem(ecosystemId) {
     enabled: true,
     solver: "forceAtlas2Based",
     forceAtlas2Based: {
-      gravitationalConstant: -100,  // Increased repulsion
-      centralGravity: 0.005,        // Less central pull
-      springLength: 200,            // Longer springs
-      springConstant: 0.05           // Softer springs
+      gravitationalConstant: -100,
+      centralGravity: 0.005,
+      springLength: 200,
+      springConstant: 0.05
     },
     stabilization: {
       enabled: true,
-      iterations: 1000,              // More iterations
+      iterations: 1000,
       updateInterval: 25
     }
   },
   interaction: {
     hover: true
+  }
+});
+
+// Add click handler for nodes
+network.on("click", function(params) {
+  console.log("Click detected", params); // Debug line
+  if (params.nodes.length > 0) {
+    // Clicked on a node - show species details
+    const nodeId = params.nodes[0];
+    const node = nodes.get(nodeId);
+    console.log("Clicked node:", node); // Debug line
+    if (node && node.organism_id) {
+      showSpeciesDetails(node.organism_id);
+    }
+  } else if (params.edges.length > 0) {
+    // Clicked on an edge - zoom into that web
+    const edgeId = params.edges[0];
+    const edge = edges.get(edgeId);
+    console.log("Clicked edge:", edge); // Debug line
+    if (edge && edge.web_id) {
+      loadWeb(edge.web_id);
+    }
   }
 });
 
@@ -486,7 +693,7 @@ network.once("stabilizationIterationsDone", function () {
     network.setOptions({ physics: false });
     network.fit();
   }, 500);
-});}
+});
 
 // ------------------
 // LOAD WEB DETAIL VIEW
@@ -570,22 +777,17 @@ async function loadWeb(webId) {
 
   network.fit();
 }
+}
 
-// ------------------
+
 // BACK BUTTON
-// ------------------
 backBtn.onclick = () => {
   if (currentView === 'web') {
     loadEcosystem(currentEcosystemId);
   }
 };
 
-// ------------------
 // LOGIN FUNCTIONALITY
-// ------------------
-// ------------------
-// LOGIN FUNCTIONALITY - UPDATED
-// ------------------
 document.getElementById("loginForm").onsubmit = async function(e) {
   e.preventDefault();
   const password = document.getElementById("password").value;
@@ -613,6 +815,164 @@ document.getElementById("loginForm").onsubmit = async function(e) {
 };
 
 document.getElementById("loginBtn").onclick = showLoginModal;
+
+// ------------------
+// DATA VALIDATION FUNCTIONS
+// ------------------
+function validateOrganisms(organismRows) {
+  const errors = [];
+  const names = new Set();
+  
+  organismRows.forEach((row, index) => {
+    const commonName = row.querySelector('input[name="common_name[]"]').value.trim();
+    const scientificName = row.querySelector('input[name="scientific_name[]"]').value.trim();
+    const trophicLevel = row.querySelector('select[name="trophic_level[]"]').value;
+    
+    // Check for empty fields
+    if (!commonName) {
+      errors.push(`Organism ${index + 1}: Common name is required`);
+    }
+    if (!scientificName) {
+      errors.push(`Organism ${index + 1}: Scientific name is required`);
+    }
+    if (!trophicLevel) {
+      errors.push(`Organism ${index + 1}: Trophic level is required`);
+    }
+    
+    // Check for duplicate names within the same web
+    const nameKey = `${commonName}|${scientificName}`.toLowerCase();
+    if (names.has(nameKey)) {
+      errors.push(`Duplicate organism: "${commonName}" (${scientificName}) appears twice`);
+    }
+    names.add(nameKey);
+    
+    // Validate trophic level
+    const validLevels = ["Producer", "Primary Consumer", "Secondary Consumer", "Apex Predator"];
+    if (!validLevels.includes(trophicLevel)) {
+      errors.push(`Organism ${index + 1}: Invalid trophic level "${trophicLevel}"`);
+    }
+  });
+  
+  return errors;
+}
+
+function validateRelationships(relationshipRows, organismRows) {
+  const errors = [];
+  const relationships = new Set(); // Track unique relationships
+  const organismCount = organismRows.length;
+  
+  relationshipRows.forEach((row, index) => {
+    const predatorSelect = row.querySelector('select[name="predator[]"]');
+    const preySelect = row.querySelector('select[name="prey[]"]');
+    const feedType = row.querySelector('select[name="feed_type[]"]').value;
+    
+    const predatorVal = predatorSelect.value;
+    const preyVal = preySelect.value;
+    
+    // Check if both are selected
+    if (!predatorVal || !preyVal) {
+      errors.push(`Relationship ${index + 1}: Please select both predator and prey`);
+      return;
+    }
+    
+    // Check if predator and prey are the same
+    if (predatorVal === preyVal) {
+      errors.push(`Relationship ${index + 1}: Organism cannot prey on itself`);
+      return;
+    }
+    
+    // Check for duplicate relationships
+    const relKey = `${predatorVal}|${preyVal}`;
+    if (relationships.has(relKey)) {
+      errors.push(`Relationship ${index + 1}: Duplicate relationship (same predator-prey pair)`);
+    }
+    relationships.add(relKey);
+    
+    // Validate feed type
+    if (!feedType || !['herbivore', 'carnivore'].includes(feedType)) {
+      errors.push(`Relationship ${index + 1}: Invalid feed type (must be herbivore or carnivore)`);
+    }
+    
+    // Get indices
+    const predatorIdx = parseInt(predatorVal.replace('temp_', ''));
+    const preyIdx = parseInt(preyVal.replace('temp_', ''));
+    
+    // Get trophic levels
+    const predatorLevel = organismRows[predatorIdx].querySelector('select[name="trophic_level[]"]').value;
+    const preyLevel = organismRows[preyIdx].querySelector('select[name="trophic_level[]"]').value;
+    
+    // Validate trophic level hierarchy
+    const levelOrder = {
+      "Producer": 1,
+      "Primary Consumer": 2,
+      "Secondary Consumer": 3,
+      "Apex Predator": 4
+    };
+    
+    if (levelOrder[predatorLevel] <= levelOrder[preyLevel]) {
+      errors.push(`Relationship ${index + 1}: ${predatorLevel} cannot prey on ${preyLevel} (must be higher in food chain)`);
+    }
+    
+    // Validate feed type matches trophic levels
+    if (feedType === 'herbivore' && preyLevel !== 'Producer') {
+      errors.push(`Relationship ${index + 1}: Herbivores should only prey on Producers`);
+    }
+    if (feedType === 'carnivore' && preyLevel === 'Producer') {
+      errors.push(`Relationship ${index + 1}: Carnivores cannot prey on Producers`);
+    }
+  });
+  
+  return errors;
+}
+
+function validateImages(organismRows) {
+  const errors = [];
+  const maxSize = 5 * 1024 * 1024; // 5MB
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  
+  organismRows.forEach((row, index) => {
+    const imageFile = row.querySelector('input[name="image[]"]').files[0];
+    if (imageFile) {
+      if (imageFile.size > maxSize) {
+        errors.push(`Organism ${index + 1}: Image too large (max 5MB)`);
+      }
+      if (!allowedTypes.includes(imageFile.type)) {
+        errors.push(`Organism ${index + 1}: Invalid image type (use JPG, PNG, GIF, or WebP)`);
+      }
+    }
+  });
+  
+  return errors;
+}
+
+function checkForCircularRelationships(relationshipRows) {
+  // Build adjacency list
+  const graph = {};
+  
+  // First pass: build the graph
+  for (let i = 0; i < relationshipRows.length; i++) {
+    const row = relationshipRows[i];
+    const predator = row.querySelector('select[name="predator[]"]').value;
+    const prey = row.querySelector('select[name="prey[]"]').value;
+    if (predator && prey) {
+      if (!graph[predator]) graph[predator] = [];
+      graph[predator].push(prey);
+    }
+  }
+  
+  // Second pass: check for cycles
+  for (let i = 0; i < relationshipRows.length; i++) {
+    const row = relationshipRows[i];
+    const predator = row.querySelector('select[name="predator[]"]').value;
+    const prey = row.querySelector('select[name="prey[]"]').value;
+    
+    if (predator && prey && graph[prey] && graph[prey].includes(predator)) {
+      return ["Circular relationship detected (A eats B and B eats A)"];
+    }
+  }
+  
+  return [];
+}
 
 // ------------------
 // ADMIN FORM FUNCTIONS
@@ -661,19 +1021,30 @@ function addRelationship() {
   const newRow = document.createElement("div");
   newRow.className = "relationship-row";
   newRow.innerHTML = `
-    <select class="form-control predator-select" name="predator[]" required>
-      <option value="">Predator</option>
-    </select>
-    <span>→</span>
-    <select class="form-control prey-select" name="prey[]" required>
-      <option value="">Prey</option>
-    </select>
-    <select class="form-control" name="feed_type[]" required>
-      <option value="">Type</option>
-      <option value="herbivore">Herbivore</option>
-      <option value="carnivore">Carnivore</option>
-    </select>
-    <button type="button" class="btn btn-danger btn-sm" onclick="removeRelationship(this)">Remove</button>
+    <div class="d-flex align-items-center gap-2">
+      <div>
+        <small class="text-muted">Prey (gets eaten)</small>
+        <select class="form-control prey-select" name="prey[]" required>
+          <option value="">Select prey...</option>
+        </select>
+      </div>
+      <span class="fw-bold">→</span>
+      <div>
+        <small class="text-muted">Predator (eats)</small>
+        <select class="form-control predator-select" name="predator[]" required>
+          <option value="">Select predator...</option>
+        </select>
+      </div>
+      <div>
+        <small class="text-muted">Type</small>
+        <select class="form-control" name="feed_type[]" required>
+          <option value="">Type</option>
+          <option value="herbivore">Herbivore</option>
+          <option value="carnivore">Carnivore</option>
+        </select>
+      </div>
+      <button type="button" class="btn btn-danger btn-sm" onclick="removeRelationship(this)">Remove</button>
+    </div>
   `;
   container.appendChild(newRow);
   updateRelationshipSelects();
@@ -687,9 +1058,19 @@ function removeRelationship(button) {
 
 function updateRelationshipSelects() {
   const organisms = document.querySelectorAll(".organism-row");
+  const preySelects = document.querySelectorAll(".prey-select");  // Note: prey-select first now
   const predatorSelects = document.querySelectorAll(".predator-select");
-  const preySelects = document.querySelectorAll(".prey-select");
   
+  // Store current selections
+  const currentSelections = [];
+  preySelects.forEach((select, index) => {
+    currentSelections.push({
+      prey: select.value,
+      predator: predatorSelects[index].value
+    });
+  });
+  
+  // Build options
   let options = '<option value="">Select</option>';
   organisms.forEach((row, index) => {
     const commonName = row.querySelector('input[name="common_name[]"]').value;
@@ -698,12 +1079,19 @@ function updateRelationshipSelects() {
     }
   });
   
-  predatorSelects.forEach(select => {
+  // Update all selects
+  preySelects.forEach((select, index) => {
     select.innerHTML = options;
+    if (currentSelections[index] && currentSelections[index].prey) {
+      select.value = currentSelections[index].prey;
+    }
   });
   
-  preySelects.forEach(select => {
+  predatorSelects.forEach((select, index) => {
     select.innerHTML = options;
+    if (currentSelections[index] && currentSelections[index].predator) {
+      select.value = currentSelections[index].predator;
+    }
   });
 }
 
@@ -716,46 +1104,107 @@ document.addEventListener('input', function(e) {
 
 document.getElementById("webForm").onsubmit = async function(e) {
   e.preventDefault();
+  console.log("Form submitted"); // Debug line
+  
+  // Clear previous errors
+  document.getElementById("formErrors").innerHTML = "";
+  
+  // Check if an ecosystem is selected
+  const selectedEcosystemId = document.getElementById("ecosystem").value;
+  console.log("Ecosystem ID:", selectedEcosystemId); // Debug line
+  
+  if (!selectedEcosystemId) {
+    document.getElementById("formErrors").innerHTML = "Please select an ecosystem";
+    return;
+  }
+  
+  const webName = document.getElementById("webName").value;
+  console.log("Web name:", webName); // Debug line
+  
+  if (!webName) {
+    document.getElementById("formErrors").innerHTML = "Please enter a web name";
+    return;
+  }
+  
+  const organismRows = document.querySelectorAll(".organism-row");
+  console.log("Organism rows:", organismRows.length); // Debug line
+  
+  if (organismRows.length === 0) {
+    document.getElementById("formErrors").innerHTML = "Please add at least one organism";
+    return;
+  }
+  
+  const relationshipRows = document.querySelectorAll(".relationship-row");
+  console.log("Relationship rows:", relationshipRows.length); // Debug line
   
   const formData = new FormData();
-  formData.append("ecosystem_id", document.getElementById("ecosystem").value);
-  formData.append("web_name", document.getElementById("webName").value);
+  formData.append("ecosystem_id", selectedEcosystemId);
+  formData.append("web_name", webName);
   
-  // Add organisms
-  const organismRows = document.querySelectorAll(".organism-row");
+  // Prepare organisms data
+  const organismsData = [];
   organismRows.forEach((row, index) => {
-    formData.append(`organisms[${index}][common_name]`, row.querySelector('input[name="common_name[]"]').value);
-    formData.append(`organisms[${index}][scientific_name]`, row.querySelector('input[name="scientific_name[]"]').value);
-    formData.append(`organisms[${index}][trophic_level]`, row.querySelector('select[name="trophic_level[]"]').value);
+    const commonName = row.querySelector('input[name="common_name[]"]').value;
+    const scientificName = row.querySelector('input[name="scientific_name[]"]').value;
+    const trophicLevel = row.querySelector('select[name="trophic_level[]"]').value;
+    
+    organismsData.push({
+      common_name: commonName,
+      scientific_name: scientificName,
+      trophic_level: trophicLevel
+    });
+    
     const imageFile = row.querySelector('input[name="image[]"]').files[0];
     if (imageFile) {
       formData.append(`images[${index}]`, imageFile);
     }
   });
   
-  // Add relationships
-  const relationshipRows = document.querySelectorAll(".relationship-row");
+  formData.append("organisms", JSON.stringify(organismsData));
+  console.log("Organisms data:", organismsData); // Debug line
+  
+  // Prepare relationships data
+  const relationshipsData = [];
   relationshipRows.forEach((row, index) => {
     const predatorSelect = row.querySelector('select[name="predator[]"]');
     const preySelect = row.querySelector('select[name="prey[]"]');
     const feedType = row.querySelector('select[name="feed_type[]"]').value;
     
-    // Get indices from the select values (temp_0 format)
-    const predatorIndex = predatorSelect.value.replace('temp_', '');
-    const preyIndex = preySelect.value.replace('temp_', '');
+    const predatorVal = predatorSelect.value;
+    const preyVal = preySelect.value;
     
-    formData.append(`relationships[${index}][predator]`, predatorIndex);
-    formData.append(`relationships[${index}][prey]`, preyIndex);
-    formData.append(`relationships[${index}][feed_type]`, feedType);
+    console.log(`Relationship ${index}:`, predatorVal, "→", preyVal, feedType); // Debug line
+    
+    if (predatorVal && preyVal && feedType) {
+      const predatorIndex = predatorVal.replace('temp_', '');
+      const preyIndex = preyVal.replace('temp_', '');
+      
+      relationshipsData.push({
+        predator: predatorIndex,
+        prey: preyIndex,
+        feed_type: feedType
+      });
+    }
   });
   
+  formData.append("relationships", JSON.stringify(relationshipsData));
+  console.log("Relationships data:", relationshipsData); // Debug line
+  
+  if (relationshipsData.length === 0) {
+    document.getElementById("formErrors").innerHTML = "Please add at least one valid relationship";
+    return;
+  }
+  
   try {
+    console.log("Sending request..."); // Debug line
     const response = await fetch("/admin/create-web", {
       method: "POST",
       body: formData
     });
     
+    console.log("Response status:", response.status); // Debug line
     const result = await response.json();
+    console.log("Response result:", result); // Debug line
     
     if (response.ok) {
       alert("Food web created successfully!");
@@ -766,9 +1215,70 @@ document.getElementById("webForm").onsubmit = async function(e) {
     }
   } catch (error) {
     console.error("Error:", error);
-    document.getElementById("formErrors").innerHTML = "Network error";
+    document.getElementById("formErrors").innerHTML = "Network error: " + error.message;
   }
 };
+
+// CREATE NEW ECOSYSTEM
+async function createNewEcosystem() {
+  const name = document.getElementById("newEcosystemName").value;
+  if (!name) {
+    alert("Please enter an ecosystem name");
+    return;
+  }
+  
+  const description = document.getElementById("newEcosystemDescription").value;
+  
+  const formData = new FormData();
+  formData.append("name", name);
+  if (description) formData.append("description", description);
+  
+  try {
+    const response = await fetch("/admin/ecosystems", {
+      method: "POST",
+      body: formData
+    });
+    
+    const result = await response.json();
+    
+    if (response.ok) {
+      alert(`Ecosystem "${name}" created successfully!`);
+      document.getElementById("newEcosystemName").value = "";
+      document.getElementById("newEcosystemDescription").value = "";
+      
+      // Refresh the ecosystem dropdown
+      loadEcosystemsForForm();
+      
+      // Auto-select the new ecosystem
+      setTimeout(() => {
+        const select = document.getElementById("ecosystem");
+        // Find and select the newly created ecosystem
+        Array.from(select.options).forEach(option => {
+          if (option.text === name) {
+            option.selected = true;
+          }
+        });
+      }, 500);
+    } else {
+      alert("Error creating ecosystem: " + (result.detail || "Unknown error"));
+    }
+  } catch (error) {
+    console.error("Error:", error);
+    alert("Network error creating ecosystem");
+  }
+}
+
+// Update loadEcosystemsForForm to be called after creating new ecosystem
+async function loadEcosystemsForForm() {
+  const response = await fetch("/ecosystems");
+  const ecosystems = await response.json();
+  
+  const select = document.getElementById("ecosystem");
+  select.innerHTML = '<option value="">-- Choose existing --</option>';
+  ecosystems.forEach(e => {
+    select.innerHTML += `<option value="${e.id}">${e.name}</option>`;
+  });
+}
 
 // INIT
 loadEcosystemButtons();

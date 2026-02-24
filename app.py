@@ -249,6 +249,37 @@ async def create_food_web(
     finally:
         conn.close()
 
+# ============================================================
+# DELETE FOOD WEB (Admin only)
+# ============================================================
+@app.delete("/admin/webs/{web_id}")
+def delete_food_web(web_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # First check if web exists
+        cursor.execute("SELECT id FROM food_webs WHERE id = %s", (web_id,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Food web not found")
+        
+        # Delete feeding relationships first (foreign key constraint)
+        cursor.execute("DELETE FROM feeding_relationships WHERE web_id = %s", (web_id,))
+        
+        # Delete web_organisms entries
+        cursor.execute("DELETE FROM web_organisms WHERE web_id = %s", (web_id,))
+        
+        # Finally delete the food web
+        cursor.execute("DELETE FROM food_webs WHERE id = %s", (web_id,))
+        
+        conn.commit()
+        return {"message": "Food web deleted successfully"}
+        
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
 
 # ============================================================
 # ECOSYSTEM VIEW (Merged Webs)
