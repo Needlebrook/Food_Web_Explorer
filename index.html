@@ -47,13 +47,111 @@
       color: white;
     }
 
+    #speciesDetails {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.3);
+      z-index: 1000;
+      max-width: 400px;
+      display: none;
+    }
+
+    #speciesDetails img {
+      max-width: 100%;
+      max-height: 200px;
+      object-fit: cover;
+    }
+
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 999;
+      display: none;
+    }
+
+    #loginModal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.3);
+      z-index: 1000;
+      display: none;
+      width: 90%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    #adminForm {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.3);
+      z-index: 1000;
+      display: none;
+      width: 90%;
+      max-width: 800px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .close-btn {
+      cursor: pointer;
+      font-size: 24px;
+    }
+
+    .error-message {
+      color: red;
+      font-size: 14px;
+      margin-top: 5px;
+    }
+
+    .form-section {
+      border: 1px solid #ddd;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 5px;
+    }
+
+    .relationship-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+      align-items: center;
+    }
   </style>
 </head>
 <body>
 
-<div class="container mt-4">
-
-  <h2 class="text-center mb-4">🌿 Food Web Explorer</h2>
+<div class="container mt-4 position-relative">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="text-center mb-0">🌿 Food Web Explorer</h2>
+    <button id="loginBtn" class="btn btn-outline-success">🔑 Log in as Admin</button>
+  </div>
 
   <!-- Ecosystem Buttons -->
   <div id="ecosystemButtons" class="d-flex flex-wrap gap-3 justify-content-center mb-4"></div>
@@ -65,21 +163,120 @@
     </button>
   </div>
 
-    <!-- Graph -->
-      <div id="network"></div>
+  <!-- Graph -->
+  <div id="network"></div>
+</div>
 
+<!-- Overlay -->
+<div id="overlay" class="overlay"></div>
 
+<!-- Species Details -->
+<div id="speciesDetails">
+  <div class="modal-header">
+    <h3>Species Details</h3>
+    <span class="close-btn" onclick="closeSpeciesDetails()">&times;</span>
+  </div>
+  <div id="speciesContent"></div>
+</div>
+
+<!-- Login-->
+<div id="loginModal">
+  <div class="modal-header">
+    <h3>Admin Login</h3>
+    <span class="close-btn" onclick="closeLoginModal()">&times;</span>
+  </div>
+  <form id="loginForm">
+    <div class="mb-3">
+      <label for="password" class="form-label">Password</label>
+      <input type="password" class="form-control" id="password" required>
+    </div>
+    <div id="loginError" class="error-message"></div>
+    <button type="submit" class="btn btn-success">Login</button>
+  </form>
+</div>
+
+<!-- Admin Form Modal -->
+<div id="adminForm">
+  <div class="modal-header">
+    <h3>Create New Food Web</h3>
+    <span class="close-btn" onclick="closeAdminForm()">&times;</span>
+  </div>
+  <form id="webForm">
+    <div class="form-section">
+      <h4>Ecosystem</h4>
+      <div class="mb-3">
+        <label for="ecosystem" class="form-label">Select Ecosystem</label>
+        <select class="form-control" id="ecosystem" required>
+          <option value="">Choose...</option>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label for="webName" class="form-label">Food Web Name</label>
+        <input type="text" class="form-control" id="webName" required>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <h4>Organisms</h4>
+      <div id="organismsList">
+        <div class="organism-row mb-3">
+          <input type="text" class="form-control mb-2" placeholder="Common Name" name="common_name[]" required>
+          <input type="text" class="form-control mb-2" placeholder="Scientific Name" name="scientific_name[]" required>
+          <select class="form-control mb-2" name="trophic_level[]" required>
+            <option value="">Select Trophic Level</option>
+            <option value="Producer">Producer</option>
+            <option value="Primary Consumer">Primary Consumer</option>
+            <option value="Secondary Consumer">Secondary Consumer</option>
+            <option value="Apex Predator">Apex Predator</option>
+          </select>
+          <input type="file" class="form-control mb-2" name="image[]" accept="image/*">
+          <button type="button" class="btn btn-danger btn-sm" onclick="removeOrganism(this)">Remove</button>
+        </div>
+      </div>
+      <button type="button" class="btn btn-secondary" onclick="addOrganism()">+ Add Organism</button>
+    </div>
+
+    <div class="form-section">
+      <h4>Feeding Relationships</h4>
+      <div id="relationshipsList">
+        <div class="relationship-row">
+          <select class="form-control predator-select" name="predator[]" required>
+            <option value="">Predator</option>
+          </select>
+          <span>→</span>
+          <select class="form-control prey-select" name="prey[]" required>
+            <option value="">Prey</option>
+          </select>
+          <select class="form-control" name="feed_type[]" required>
+            <option value="">Type</option>
+            <option value="herbivore">Herbivore</option>
+            <option value="carnivore">Carnivore</option>
+          </select>
+          <button type="button" class="btn btn-danger btn-sm" onclick="removeRelationship(this)">Remove</button>
+        </div>
+      </div>
+      <button type="button" class="btn btn-secondary" onclick="addRelationship()">+ Add Relationship</button>
+    </div>
+
+    <div id="formErrors" class="error-message"></div>
+    <button type="submit" class="btn btn-success">Create Food Web</button>
+  </form>
 </div>
 
 <script>
-
 const container = document.getElementById("network");
 const buttonContainer = document.getElementById("ecosystemButtons");
 const backBtn = document.getElementById("backBtn");
+const overlay = document.getElementById("overlay");
+const speciesDetails = document.getElementById("speciesDetails");
+const loginModal = document.getElementById("loginModal");
+const adminForm = document.getElementById("adminForm");
 
 let network;
 let currentEcosystemId = null;
-
+let currentView = 'ecosystem'; 
+let currentWebId = null;
+let isAdmin = false;
 
 // ------------------
 // COLORS
@@ -109,12 +306,97 @@ function getLevelNumber(level) {
   }
 }
 
+// ------------------
+// MODAL FUNCTIONS
+// ------------------
+function showOverlay() {
+  overlay.style.display = "block";
+}
+
+function hideOverlay() {
+  overlay.style.display = "none";
+}
+
+function showSpeciesDetails(organismId) {
+  fetchSpeciesDetails(organismId);
+  showOverlay();
+  speciesDetails.style.display = "block";
+}
+
+function closeSpeciesDetails() {
+  hideOverlay();
+  speciesDetails.style.display = "none";
+}
+
+function showLoginModal() {
+  showOverlay();
+  loginModal.style.display = "block";
+}
+
+function closeLoginModal() {
+  hideOverlay();
+  loginModal.style.display = "none";
+  document.getElementById("loginForm").reset();
+  document.getElementById("loginError").innerHTML = "";
+}
+
+function showAdminForm() {
+  loadEcosystemsForForm();
+  showOverlay();
+  adminForm.style.display = "block";
+}
+
+function closeAdminForm() {
+  hideOverlay();
+  adminForm.style.display = "none";
+  document.getElementById("webForm").reset();
+  document.getElementById("formErrors").innerHTML = "";
+}
+
+// ------------------
+// FETCH SPECIES DETAILS
+// ------------------
+
+async function fetchSpeciesDetails(organismId) {
+  try {
+    // Fix 1: Use the correct endpoint - /organisms/${organismId}
+    const response = await fetch(`/organisms/${organismId}`);
+    const data = await response.json();
+    
+    let content = `
+      <div class="text-center">
+        <h4>${data.common_name}</h4>
+        <p><em>${data.scientific_name}</em></p>
+        <p><strong>Trophic Level:</strong> ${data.trophic_level}</p>
+    `;
+    
+    if (data.image_url) {
+      // Fix 2: Use the image_url directly (it already starts with /static/)
+      content += `<img src="${data.image_url}" alt="${data.common_name}" class="img-fluid mb-3">`;
+    }
+    
+    if (data.prey && data.prey.length > 0) {
+      content += `<p><strong>Preys on:</strong> ${data.prey.join(', ')}</p>`;
+    }
+    
+    if (data.predators && data.predators.length > 0) {
+      content += `<p><strong>Predators:</strong> ${data.predators.join(', ')}</p>`;
+    }
+    
+    content += `</div>`;
+    
+    document.getElementById("speciesContent").innerHTML = content;
+  } catch (error) {
+    console.error("Error fetching species details:", error);
+    document.getElementById("speciesContent").innerHTML = "<p class='text-danger'>Error loading species details</p>";
+  }
+}
 
 // ------------------
 // LOAD ECOSYSTEM BUTTONS
 // ------------------
 async function loadEcosystemButtons() {
-  const response = await fetch("http://127.0.0.1:8000/ecosystems");
+  const response = await fetch("/ecosystems");
   const ecosystems = await response.json();
 
   buttonContainer.innerHTML = "";
@@ -128,20 +410,19 @@ async function loadEcosystemButtons() {
   });
 }
 
-
 // ------------------
 // LOAD ECOSYSTEM (Overview)
 // ------------------
 async function loadEcosystem(ecosystemId) {
-
   if (network) {
-  network.destroy();
+    network.destroy();
   }
 
   currentEcosystemId = ecosystemId;
+  currentView = 'ecosystem';
   backBtn.classList.add("d-none");
 
-  const response = await fetch(`http://127.0.0.1:8000/ecosystems/${ecosystemId}`);
+  const response = await fetch(`/ecosystems/${ecosystemId}`);
   const data = await response.json();
 
   const nodes = new vis.DataSet(
@@ -156,19 +437,21 @@ async function loadEcosystem(ecosystemId) {
       shape: "dot",
       size: 26,
       font: { size: 16, color: "#1b1b1b" },
-      shadow: true
+      shadow: true,
+      organism_id: n.organism_id
     }))
   );
 
   const edges = new vis.DataSet(
     data.edges.map(e => ({
       from: e.from,
-    to: e.to,
+      to: e.to,
       arrows: { from: { enabled: true }},
       smooth: {
         type: "cubicBezier",
         forceDirection: "vertical"
-      }
+      },
+      web_id: e.web_id
     }))
   );
 
@@ -178,15 +461,17 @@ async function loadEcosystem(ecosystemId) {
   },
   physics: {
     enabled: true,
-    solver: "forceAtlas2Based",   // makes it organic
+    solver: "forceAtlas2Based",
     forceAtlas2Based: {
-      gravitationalConstant: -50,
-      centralGravity: 0.01,
-      springLength: 120,
-      springConstant: 0.08
+      gravitationalConstant: -100,  // Increased repulsion
+      centralGravity: 0.005,        // Less central pull
+      springLength: 200,            // Longer springs
+      springConstant: 0.05           // Softer springs
     },
     stabilization: {
-      iterations: 200
+      enabled: true,
+      iterations: 1000,              // More iterations
+      updateInterval: 25
     }
   },
   interaction: {
@@ -194,27 +479,27 @@ async function loadEcosystem(ecosystemId) {
   }
 });
 
-
+// Wait longer before turning off physics
 network.once("stabilizationIterationsDone", function () {
-  network.setOptions({ physics: false });
-  network.fit();
-});
-
-
-  network.fit();
-}
-
+  // Give it a little more time to settle
+  setTimeout(() => {
+    network.setOptions({ physics: false });
+    network.fit();
+  }, 500);
+});}
 
 // ------------------
 // LOAD WEB DETAIL VIEW
 // ------------------
 async function loadWeb(webId) {
-
   if (network) {
-  network.destroy();
+    network.destroy();
   }
 
-  const response = await fetch(`http://127.0.0.1:8000/food-webs/${webId}`);
+  currentWebId = webId;
+  currentView = 'web';
+
+  const response = await fetch(`/food-webs/${webId}`);
   const data = await response.json();
 
   backBtn.classList.remove("d-none");
@@ -222,10 +507,7 @@ async function loadWeb(webId) {
   const nodes = new vis.DataSet(
     data.nodes.map(n => ({
       id: n.id,
-      label:
-        n.common_name + "\n" +
-        n.scientific_name + "\n" +
-        n.trophic_level,
+      label: n.common_name + "\n" + n.scientific_name,
       level: getLevelNumber(n.trophic_level),
       color: {
         background: getColor(n.trophic_level),
@@ -234,7 +516,8 @@ async function loadWeb(webId) {
       shape: "box",
       margin: 10,
       font: { size: 15, color: "#1b1b1b" },
-      shadow: true
+      shadow: true,
+      organism_id: n.id
     }))
   );
 
@@ -251,7 +534,7 @@ async function loadWeb(webId) {
   );
 
   network = new vis.Network(container, { nodes, edges }, {
-  layout: {
+    layout: {
       hierarchical: {
         direction: "UD",
         sortMethod: "directed",
@@ -271,29 +554,224 @@ async function loadWeb(webId) {
     },
     interaction: { hover: false }
   });
-  network.once("stabilizationIterationsDone", function () {
-  network.setOptions({ physics: false });
-  network.fit();
+
+  network.on("click", function(params) {
+    if (params.nodes.length > 0) {
+      const nodeId = params.nodes[0];
+      const node = nodes.get(nodeId);
+      showSpeciesDetails(node.organism_id);
+    }
   });
 
+  network.once("stabilizationIterationsDone", function () {
+    network.setOptions({ physics: false });
+    network.fit();
+  });
 
   network.fit();
 }
-
 
 // ------------------
 // BACK BUTTON
 // ------------------
 backBtn.onclick = () => {
-  loadEcosystem(currentEcosystemId);
+  if (currentView === 'web') {
+    loadEcosystem(currentEcosystemId);
+  }
 };
 
+// ------------------
+// LOGIN FUNCTIONALITY
+// ------------------
+// ------------------
+// LOGIN FUNCTIONALITY - UPDATED
+// ------------------
+document.getElementById("loginForm").onsubmit = async function(e) {
+  e.preventDefault();
+  const password = document.getElementById("password").value;
+  
+  try {
+    const formData = new FormData();
+    formData.append("password", password);
+    
+    const response = await fetch("/admin/login", {
+      method: "POST",
+      body: formData
+    });
+    
+    if (response.ok) {
+      isAdmin = true;
+      closeLoginModal();
+      showAdminForm();
+    } else {
+      const error = await response.json();
+      document.getElementById("loginError").innerHTML = error.detail || "Incorrect password";
+    }
+  } catch (error) {
+    document.getElementById("loginError").innerHTML = "Network error";
+  }
+};
+
+document.getElementById("loginBtn").onclick = showLoginModal;
+
+// ------------------
+// ADMIN FORM FUNCTIONS
+// ------------------
+async function loadEcosystemsForForm() {
+  const response = await fetch("/ecosystems");
+  const ecosystems = await response.json();
+  
+  const select = document.getElementById("ecosystem");
+  select.innerHTML = '<option value="">Choose...</option>';
+  ecosystems.forEach(e => {
+    select.innerHTML += `<option value="${e.id}">${e.name}</option>`;
+  });
+}
+
+function addOrganism() {
+  const container = document.getElementById("organismsList");
+  const newRow = document.createElement("div");
+  newRow.className = "organism-row mb-3";
+  newRow.innerHTML = `
+    <input type="text" class="form-control mb-2" placeholder="Common Name" name="common_name[]" required>
+    <input type="text" class="form-control mb-2" placeholder="Scientific Name" name="scientific_name[]" required>
+    <select class="form-control mb-2" name="trophic_level[]" required>
+      <option value="">Select Trophic Level</option>
+      <option value="Producer">Producer</option>
+      <option value="Primary Consumer">Primary Consumer</option>
+      <option value="Secondary Consumer">Secondary Consumer</option>
+      <option value="Apex Predator">Apex Predator</option>
+    </select>
+    <input type="file" class="form-control mb-2" name="image[]" accept="image/*">
+    <button type="button" class="btn btn-danger btn-sm" onclick="removeOrganism(this)">Remove</button>
+  `;
+  container.appendChild(newRow);
+  updateRelationshipSelects();
+}
+
+function removeOrganism(button) {
+  if (document.querySelectorAll(".organism-row").length > 1) {
+    button.closest(".organism-row").remove();
+    updateRelationshipSelects();
+  }
+}
+
+function addRelationship() {
+  const container = document.getElementById("relationshipsList");
+  const newRow = document.createElement("div");
+  newRow.className = "relationship-row";
+  newRow.innerHTML = `
+    <select class="form-control predator-select" name="predator[]" required>
+      <option value="">Predator</option>
+    </select>
+    <span>→</span>
+    <select class="form-control prey-select" name="prey[]" required>
+      <option value="">Prey</option>
+    </select>
+    <select class="form-control" name="feed_type[]" required>
+      <option value="">Type</option>
+      <option value="herbivore">Herbivore</option>
+      <option value="carnivore">Carnivore</option>
+    </select>
+    <button type="button" class="btn btn-danger btn-sm" onclick="removeRelationship(this)">Remove</button>
+  `;
+  container.appendChild(newRow);
+  updateRelationshipSelects();
+}
+
+function removeRelationship(button) {
+  if (document.querySelectorAll(".relationship-row").length > 1) {
+    button.closest(".relationship-row").remove();
+  }
+}
+
+function updateRelationshipSelects() {
+  const organisms = document.querySelectorAll(".organism-row");
+  const predatorSelects = document.querySelectorAll(".predator-select");
+  const preySelects = document.querySelectorAll(".prey-select");
+  
+  let options = '<option value="">Select</option>';
+  organisms.forEach((row, index) => {
+    const commonName = row.querySelector('input[name="common_name[]"]').value;
+    if (commonName) {
+      options += `<option value="temp_${index}">${commonName}</option>`;
+    }
+  });
+  
+  predatorSelects.forEach(select => {
+    select.innerHTML = options;
+  });
+  
+  preySelects.forEach(select => {
+    select.innerHTML = options;
+  });
+}
+
+// Update selects when organism names change
+document.addEventListener('input', function(e) {
+  if (e.target.name === 'common_name[]') {
+    updateRelationshipSelects();
+  }
+});
+
+document.getElementById("webForm").onsubmit = async function(e) {
+  e.preventDefault();
+  
+  const formData = new FormData();
+  formData.append("ecosystem_id", document.getElementById("ecosystem").value);
+  formData.append("web_name", document.getElementById("webName").value);
+  
+  // Add organisms
+  const organismRows = document.querySelectorAll(".organism-row");
+  organismRows.forEach((row, index) => {
+    formData.append(`organisms[${index}][common_name]`, row.querySelector('input[name="common_name[]"]').value);
+    formData.append(`organisms[${index}][scientific_name]`, row.querySelector('input[name="scientific_name[]"]').value);
+    formData.append(`organisms[${index}][trophic_level]`, row.querySelector('select[name="trophic_level[]"]').value);
+    const imageFile = row.querySelector('input[name="image[]"]').files[0];
+    if (imageFile) {
+      formData.append(`images[${index}]`, imageFile);
+    }
+  });
+  
+  // Add relationships
+  const relationshipRows = document.querySelectorAll(".relationship-row");
+  relationshipRows.forEach((row, index) => {
+    const predatorSelect = row.querySelector('select[name="predator[]"]');
+    const preySelect = row.querySelector('select[name="prey[]"]');
+    const feedType = row.querySelector('select[name="feed_type[]"]').value;
+    
+    // Get indices from the select values (temp_0 format)
+    const predatorIndex = predatorSelect.value.replace('temp_', '');
+    const preyIndex = preySelect.value.replace('temp_', '');
+    
+    formData.append(`relationships[${index}][predator]`, predatorIndex);
+    formData.append(`relationships[${index}][prey]`, preyIndex);
+    formData.append(`relationships[${index}][feed_type]`, feedType);
+  });
+  
+  try {
+    const response = await fetch("/admin/create-web", {
+      method: "POST",
+      body: formData
+    });
+    
+    const result = await response.json();
+    
+    if (response.ok) {
+      alert("Food web created successfully!");
+      closeAdminForm();
+      loadEcosystemButtons();
+    } else {
+      document.getElementById("formErrors").innerHTML = result.detail || "Error creating food web";
+    }
+  } catch (error) {
+    console.error("Error:", error);
+    document.getElementById("formErrors").innerHTML = "Network error";
+  }
+};
 
 // INIT
 loadEcosystemButtons();
-
 </script>
-
 </body>
 </html>
-
