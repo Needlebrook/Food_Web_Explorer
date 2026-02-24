@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Food Web Explorer</title>
+
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- vis-network -->
+  <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+
+  <style>
+    body {
+      background: linear-gradient(to bottom right, #eef5ef, #f8fbf8);
+      font-family: "Segoe UI", sans-serif;
+    }
+
+    h2 {
+      font-weight: 600;
+      color: #2f4f3f;
+    }
+
+    #network {
+      height: 80vh;
+      border-radius: 18px;
+      background: white;
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.08);
+      padding: 10px;
+    }
+
+    .btn-eco {
+      background-color: #3c7d4f;
+      border: none;
+    }
+
+    .btn-eco:hover {
+      background-color: #2e6140;
+    }
+
+    .btn-eco-outline {
+      border: 2px solid #3c7d4f;
+      color: #3c7d4f;
+    }
+
+    .btn-eco-outline:hover {
+      background-color: #3c7d4f;
+      color: white;
+    }
+
+  </style>
+</head>
+<body>
+
+<div class="container mt-4">
+
+  <h2 class="text-center mb-4">🌿 Food Web Explorer</h2>
+
+  <!-- Ecosystem Buttons -->
+  <div id="ecosystemButtons" class="d-flex flex-wrap gap-3 justify-content-center mb-4"></div>
+
+  <!-- Back Button -->
+  <div class="text-center mb-3">
+    <button id="backBtn" class="btn btn-outline-success d-none">
+      ← Back to Ecosystem
+    </button>
+  </div>
+
+    <!-- Graph -->
+      <div id="network"></div>
+
+
+</div>
+
+<script>
+
+const container = document.getElementById("network");
+const buttonContainer = document.getElementById("ecosystemButtons");
+const backBtn = document.getElementById("backBtn");
+
+let network;
+let currentEcosystemId = null;
+
+
+// ------------------
+// COLORS
+// ------------------
+function getColor(level) {
+  switch(level) {
+    case "Producer": return "#4CAF50";
+    case "Primary Consumer": return "#2196F3";
+    case "Secondary Consumer": return "#FF9800";
+    case "Apex Predator": return "#C62828";
+    default: return "#9E9E9E";
+  }
+}
+
+function getLevelNumber(level) {
+  switch ((level || "").trim().toLowerCase()) {
+    case "producer":
+      return 1;
+    case "primary consumer":
+      return 2;
+    case "secondary consumer":
+      return 3;
+    case "apex predator":
+      return 4;
+    default:
+      return 5; 
+  }
+}
+
+
+// ------------------
+// LOAD ECOSYSTEM BUTTONS
+// ------------------
+async function loadEcosystemButtons() {
+  const response = await fetch("http://127.0.0.1:8000/ecosystems");
+  const ecosystems = await response.json();
+
+  buttonContainer.innerHTML = "";
+
+  ecosystems.forEach(e => {
+    const btn = document.createElement("button");
+    btn.className = "btn btn-success px-4";
+    btn.innerText = e.name;
+    btn.onclick = () => loadEcosystem(e.id);
+    buttonContainer.appendChild(btn);
+  });
+}
+
+
+// ------------------
+// LOAD ECOSYSTEM (Overview)
+// ------------------
+async function loadEcosystem(ecosystemId) {
+
+  if (network) {
+  network.destroy();
+  }
+
+  currentEcosystemId = ecosystemId;
+  backBtn.classList.add("d-none");
+
+  const response = await fetch(`http://127.0.0.1:8000/ecosystems/${ecosystemId}`);
+  const data = await response.json();
+
+  const nodes = new vis.DataSet(
+    data.nodes.map(n => ({
+      id: n.id,
+      label: n.common_name,
+      level: getLevelNumber(n.trophic_level),
+      color: {
+        background: getColor(n.trophic_level),
+        border: "#2f4f3f"
+      },
+      shape: "dot",
+      size: 26,
+      font: { size: 16, color: "#1b1b1b" },
+      shadow: true
+    }))
+  );
+
+  const edges = new vis.DataSet(
+    data.edges.map(e => ({
+      from: e.from,
+    to: e.to,
+      arrows: { from: { enabled: true }},
+      smooth: {
+        type: "cubicBezier",
+        forceDirection: "vertical"
+      }
+    }))
+  );
+
+  network = new vis.Network(container, { nodes, edges }, {
+  layout: {
+    improvedLayout: true
+  },
+  physics: {
+    enabled: true,
+    solver: "forceAtlas2Based",   // makes it organic
+    forceAtlas2Based: {
+      gravitationalConstant: -50,
+      centralGravity: 0.01,
+      springLength: 120,
+      springConstant: 0.08
+    },
+    stabilization: {
+      iterations: 200
+    }
+  },
+  interaction: {
+    hover: true
+  }
+});
+
+
+network.once("stabilizationIterationsDone", function () {
+  network.setOptions({ physics: false });
+  network.fit();
+});
+
+
+  network.fit();
+}
+
+
+// ------------------
+// LOAD WEB DETAIL VIEW
+// ------------------
+async function loadWeb(webId) {
+
+  if (network) {
+  network.destroy();
+  }
+
+  const response = await fetch(`http://127.0.0.1:8000/food-webs/${webId}`);
+  const data = await response.json();
+
+  backBtn.classList.remove("d-none");
+
+  const nodes = new vis.DataSet(
+    data.nodes.map(n => ({
+      id: n.id,
+      label:
+        n.common_name + "\n" +
+        n.scientific_name + "\n" +
+        n.trophic_level,
+      level: getLevelNumber(n.trophic_level),
+      color: {
+        background: getColor(n.trophic_level),
+        border: "#2f4f3f"
+      },
+      shape: "box",
+      margin: 10,
+      font: { size: 15, color: "#1b1b1b" },
+      shadow: true
+    }))
+  );
+
+  const edges = new vis.DataSet(
+    data.edges.map(e => ({
+      from: e.to,
+      to: e.from,
+      arrows: { to: { enabled: true }},
+      smooth: {
+        type: "cubicBezier",
+        forceDirection: "vertical"
+      }
+    }))
+  );
+
+  network = new vis.Network(container, { nodes, edges }, {
+  layout: {
+      hierarchical: {
+        direction: "UD",
+        sortMethod: "directed",
+        shakeTowards: "roots",
+        levelSeparation: 150,
+        nodeSpacing: 200
+      }
+    },
+    physics: {
+      enabled: true,
+      hierarchicalRepulsion: {
+        nodeDistance: 200
+      },
+      stabilization: {
+        iterations: 200
+      }
+    },
+    interaction: { hover: false }
+  });
+  network.once("stabilizationIterationsDone", function () {
+  network.setOptions({ physics: false });
+  network.fit();
+  });
+
+
+  network.fit();
+}
+
+
+// ------------------
+// BACK BUTTON
+// ------------------
+backBtn.onclick = () => {
+  loadEcosystem(currentEcosystemId);
+};
+
+
+// INIT
+loadEcosystemButtons();
+
+</script>
+
+</body>
+</html>
+
