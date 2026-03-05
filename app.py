@@ -24,14 +24,11 @@ app.add_middleware(
 @app.get("/")
 async def serve_frontend():
     return FileResponse("index.html")
-# ----------------------------
-# Static Images
-# ----------------------------
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# ----------------------------
-# NEW ENDPOINT: Get single organism details
-# ----------------------------
+
+# Get single organism details
 @app.get("/organisms/{organism_id}")
 def get_organism(organism_id: int):
     conn = get_connection()
@@ -452,6 +449,24 @@ def get_single_food_web(web_id: int):
         "edges": edges
     }
 
+@app.get("/food-webs/{web_id}/details")
+def get_food_web_details(web_id: int):
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    cursor.execute("""
+        SELECT id, name, ecosystem_id
+        FROM food_webs
+        WHERE id = %s
+    """, (web_id,))
+    
+    web = cursor.fetchone()
+    conn.close()
+    
+    if not web:
+        raise HTTPException(status_code=404, detail="Food web not found")
+    
+    return web
 
 # ============================================================
 # CREATE ORGANISM

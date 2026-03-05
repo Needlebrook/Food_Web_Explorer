@@ -167,13 +167,76 @@
     .relationship-row button {
       white-space: nowrap;
     }
+
+    /* Info Modal Styles */
+    #infoModal {
+      font-family: 'Segoe UI', Georgia, 'Times New Roman', serif;
+    }
+
+    #infoModalContent {
+      color: #2c3e50;
+    }
+
+    #infoModalContent h4 {
+      color: #2f4f3f;
+      margin-top: 15px;
+      margin-bottom: 10px;
+      font-weight: 600;
+      border-left: 4px solid #4CAF50;
+      padding-left: 10px;
+    }
+
+    #infoModalContent p {
+      margin-bottom: 12px;
+      text-align: justify;
+    }
+
+    #infoModalContent ul, #infoModalContent ol {
+      margin-bottom: 15px;
+      padding-left: 25px;
+    }
+
+    #infoModalContent li {
+      margin-bottom: 5px;
+    }
+
+    #infoModalContent .term {
+      font-weight: bold;
+      color: #2f4f3f;
+      font-style: italic;
+    }
+
+    #infoModalContent .example {
+      background-color: #f8f9fa;
+      padding: 10px;
+      border-radius: 5px;
+      border-left: 3px solid #3c7d4f;
+      margin: 15px 0;
+      font-style: italic;
+    }
+
+    .info-close {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .info-close:hover {
+      color: #2f4f3f;
+    }
   </style>
 </head>
 <body>
 
 <div class="container mt-4 position-relative">
   <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex align-items-center gap-2">
     <h2 class="text-center mb-0">🌿 Food Web Explorer</h2>
+        <button type="button" id="ecoInfoBtn" class="btn btn-primary">🌍 About Ecosystems</button>
+        <button type="button" id="webInfoBtn" class="btn btn-dark">🕸️ How to Read Food Webs</button>
+    </div>
     <button id="loginBtn" class="btn btn-outline-success">🔑 Log in as Admin</button>
   </div>
 
@@ -330,6 +393,19 @@
     <div id="formErrors" class="error-message"></div>
     <button type="submit" class="btn btn-success">Create Food Web</button>
   </form>
+</div>
+
+<!-- Info Modal -->
+<div id="infoModal" class="modal" style="display: none; position: fixed; z-index: 1001; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4);">
+  <div style="background-color: #fefefe; margin: 10% auto; padding: 20px; border: 2px solid #2f4f3f; width: 80%; max-width: 600px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #ddd; padding-bottom: 10px;">
+      <h3 id="infoModalTitle" style="color: #2f4f3f; margin: 0;">Ecosystem Information</h3>
+      <span onclick="closeInfoModal()" style="cursor: pointer; font-size: 28px; font-weight: bold; color: #aaa;">&times;</span>
+    </div>
+    <div id="infoModalContent" style="line-height: 1.6; max-height: 60vh; overflow-y: auto; padding-right: 10px;">
+      <!-- Content will be inserted here -->
+    </div>
+  </div>
 </div>
 
 <script>
@@ -710,6 +786,33 @@ async function loadWeb(webId) {
   const data = await response.json();
 
   backBtn.classList.remove("d-none");
+  
+  // Get web name from the current web data
+  // First, try to fetch web details to get the name
+  let webName = "Food Web";
+  try {
+    const webResponse = await fetch(`/food-webs/${webId}/details`);
+    if (webResponse.ok) {
+      const webData = await webResponse.json();
+      webName = webData.name;
+    }
+  } catch (error) {
+    console.log("Could not fetch web name");
+  }
+  
+  // Add web name display next to back button
+  const backBtnContainer = backBtn.parentNode;
+  
+  // Check if web name display already exists
+  let webNameDisplay = document.getElementById("webNameDisplay");
+  if (!webNameDisplay) {
+    webNameDisplay = document.createElement("span");
+    webNameDisplay.id = "webNameDisplay";
+    webNameDisplay.className = "ms-3 fw-bold text-success";
+    backBtnContainer.appendChild(webNameDisplay);
+  }
+  webNameDisplay.textContent = `🌐 ${webName}`;
+  webNameDisplay.style.display = "inline";
 
   const nodes = new vis.DataSet(
     data.nodes.map(n => ({
@@ -743,7 +846,7 @@ async function loadWeb(webId) {
   network = new vis.Network(container, { nodes, edges }, {
     layout: {
       hierarchical: {
-        direction: "UD",
+        direction: "DU",
         sortMethod: "directed",
         shakeTowards: "roots",
         levelSeparation: 150,
@@ -783,11 +886,16 @@ async function loadWeb(webId) {
 // BACK BUTTON
 backBtn.onclick = () => {
   if (currentView === 'web') {
+    // Hide web name display
+    const webNameDisplay = document.getElementById("webNameDisplay");
+    if (webNameDisplay) {
+      webNameDisplay.style.display = "none";
+    }
     loadEcosystem(currentEcosystemId);
   }
 };
 
-// LOGIN FUNCTIONALITY
+// LOGIN 
 document.getElementById("loginForm").onsubmit = async function(e) {
   e.preventDefault();
   const password = document.getElementById("password").value;
@@ -814,11 +922,17 @@ document.getElementById("loginForm").onsubmit = async function(e) {
   }
 };
 
+document.getElementById("ecoInfoBtn").onclick = showEcosystemInfo;
+document.getElementById("webInfoBtn").onclick = showWebInfo;
+
+// Close modal when clicking overlay
+overlay.addEventListener('click', function() {
+  closeInfoModal();
+});
+
 document.getElementById("loginBtn").onclick = showLoginModal;
 
-// ------------------
 // DATA VALIDATION FUNCTIONS
-// ------------------
 function validateOrganisms(organismRows) {
   const errors = [];
   const names = new Set();
@@ -974,9 +1088,8 @@ function checkForCircularRelationships(relationshipRows) {
   return [];
 }
 
-// ------------------
-// ADMIN FORM FUNCTIONS
-// ------------------
+
+// ADMIN FORM 
 async function loadEcosystemsForForm() {
   const response = await fetch("/ecosystems");
   const ecosystems = await response.json();
@@ -1095,12 +1208,98 @@ function updateRelationshipSelects() {
   });
 }
 
-// Update selects when organism names change
 document.addEventListener('input', function(e) {
   if (e.target.name === 'common_name[]') {
     updateRelationshipSelects();
   }
 });
+
+// ------------------
+// INFO MODAL FUNCTIONS
+// ------------------
+function showEcosystemInfo() {
+  document.getElementById("infoModalTitle").innerHTML = "🌍 About Ecosystems";
+  document.getElementById("infoModalContent").innerHTML = `
+    <h4>What is an Ecosystem?</h4>
+    <p>An <span class="term">ecosystem</span> is a biological community of interacting organisms and their physical environment. It encompasses all living things (plants, animals, microorganisms) in a given area, functioning together with non-living components (soil, water, air, sunlight) as a system.</p>
+    
+    <h4>Energy Flow</h4>
+    <p>Energy enters most ecosystems as sunlight, captured by <span class="term">producers</span> (plants, algae) through photosynthesis. This energy then flows through the system as organisms consume one another—from producers to consumers to decomposers. Each transfer of energy is inefficient, with approximately 90% lost as heat, which is why food chains typically have only 4-5 levels.</p>
+    
+    <h4>Ecosystem Classification</h4>
+    <p>Ecosystems are broadly categorized as:</p>
+    <ul>
+      <li><span class="term">Terrestrial</span> : Forests, grasslands, deserts, tundra</li>
+      <li><span class="term">Aquatic</span> : Freshwater (lakes, rivers) and Marine (oceans, coral reefs)</li>
+      <li><span class="term">Mixed</span> : Wetlands, estuaries, mangroves</li>
+    </ul>
+    
+    <div class="example">
+      <strong>Did you know?</strong> The term "ecosystem" was first coined in 1935 by British ecologist Arthur Tansley, who recognized that organisms and their environment form a single, integrated system.
+    </div>
+    
+    <h4>Food Webs Within Ecosystems</h4>
+    <p>Every ecosystem contains multiple, interconnected <span class="term">food webs</span> — complex networks of who-eats-whom. These webs reveal the delicate balance of predator-prey relationships and show how energy and nutrients cycle through the community. The removal or addition of a single species can cascade through the entire web, demonstrating the profound interconnectedness of all life.</p>
+  `;
+  document.getElementById("infoModal").style.display = "block";
+  showOverlay();
+}
+
+function showWebInfo() {
+  document.getElementById("infoModalTitle").innerHTML = "🕸️ How to Read Food Webs";
+  document.getElementById("infoModalContent").innerHTML = `
+    <h4>Understanding Food Web Visualization</h4>
+    <p>A <span class="term">food web</span> illustrates the feeding relationships within an ecosystem. Unlike a simple food chain (a linear sequence), a food web reveals the complex, interconnected reality of who eats whom in nature.</p>
+    
+    <h4>Trophic Levels</h4>
+    <p>Organisms are organized by <span class="term">trophic level</span>, their position in the food chain:</p>
+    <ul>
+      <li><span style="color: #4CAF50; font-weight: bold;">Producers (Green)</span> - Autotrophs (plants, algae, phytoplankton) that create their own energy through photosynthesis or chemosynthesis. They form the foundation of every food web.</li>
+      <li><span style="color: #2196F3; font-weight: bold;">Primary Consumers (Blue)</span> - Herbivores that eat producers directly. Examples: deer, grasshoppers, mussels, zooplankton.</li>
+      <li><span style="color: #FF9800; font-weight: bold;">Secondary Consumers (Orange)</span> - Carnivores that eat primary consumers. Examples: small fish, spiders, crabs, starfish.</li>
+      <li><span style="color: #C62828; font-weight: bold;">Apex Predators (Red)</span> - Top carnivores with no natural predators in their ecosystem. Examples: sharks, lions, eagles, sea otters.</li>
+    </ul>
+    
+    <h4>Reading the Diagram</h4>
+    <p>In this visualization, each <span class="term">node</span> (circle or box) represents a species. The color indicates its trophic level. <span class="term">Arrows</span> point <strong>from Prey to Predator</strong> - they show the direction of energy flow. Following an arrow tells you "who is eaten by whom."</p>
+    
+    <div class="example">
+      <strong>Example:</strong> In a marine web, you might see: <br>
+      <span style="color: #4CAF50;">Phytoplankton</span> <span style="font-weight: bold;">→</span> <span style="color: #2196F3;">Mussel</span> <span style="font-weight: bold;">→</span> <span style="color: #FF9800;">Crab</span> <span style="font-weight: bold;">→</span> <span style="color: #C62828;">Sea Otter</span><br>
+      This shows the flow of energy from producer to apex predator.
+    </div>
+    
+    <h4>Interpreting Complexity</h4>
+    <p>A healthy food web shows multiple connections; most consumers eat several prey species and are eaten by several predators. This <span class="term">redundancy</span> creates stability; if one prey species declines, predators can switch to alternatives. Webs with few connections are fragile and vulnerable to collapse.</p>
+    
+    <h4>Interactive Features</h4>
+    <ul>
+      <li><strong>Click on any node</strong> to see detailed species information, including scientific name, trophic level, and its specific predators and prey.</li>
+      <li><strong>Click on any edge (arrow)</strong> to zoom into that specific food web for a detailed view.</li>
+      <li><strong>Drag nodes</strong> to explore the web from different angles. the layout will settle into a stable position.</li>
+      <li><strong>Use the mouse</strong> to zoom in and out.</li>
+    </ul>
+    
+    <h4>Ecological Principles Illustrated</h4>
+    <p>Food webs demonstrate several fundamental ecological concepts:</p>
+    <ul>
+      <li><span class="term">Energy transfer efficiency</span> :- Only about 10% of energy passes between trophic levels, explaining why apex predators are rare.</li>
+      <li><span class="term">Keystone species</span> :- Some species have disproportionately large effects on their ecosystem; their removal can cause cascading extinctions.</li>
+      <li><span class="term">Trophic cascades</span> :- Changes at one level ripple through the web. For example, removing sea otters leads to urchin overpopulation, which destroys kelp forests.</li>
+    </ul>
+    
+    <div class="example">
+      <strong>Food Web Fun Fact:</strong> The most complex food web ever studied is in the Wakulla Springs ecosystem in Florida, with over 1,500 species and 25,000 feeding relationships documented!
+    </div>
+  `;
+  document.getElementById("infoModal").style.display = "block";
+  showOverlay();
+}
+
+function closeInfoModal() {
+  document.getElementById("infoModal").style.display = "none";
+  hideOverlay();
+}
 
 document.getElementById("webForm").onsubmit = async function(e) {
   e.preventDefault();
@@ -1280,7 +1479,6 @@ async function loadEcosystemsForForm() {
   });
 }
 
-// INIT
 loadEcosystemButtons();
 </script>
 </body>
