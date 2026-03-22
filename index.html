@@ -228,6 +228,45 @@
     .info-close:hover {
       color: #2f4f3f;
     }
+
+    #ecosystemButtons {
+        overflow-x: auto;
+        overflow-y: hidden;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+        scrollbar-width: thin; 
+        padding-bottom: 10px; /* Space for scrollbar */
+    }
+
+    #ecosystemButtons::-webkit-scrollbar {
+        height: 6px; /* Height of horizontal scrollbar */
+    }
+
+    #ecosystemButtons::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+
+    #ecosystemButtons::-webkit-scrollbar-thumb {
+        background: #3c7d4f;
+        border-radius: 10px;
+    }
+
+    #ecosystemButtons::-webkit-scrollbar-thumb:hover {
+        background: #2e6140;
+    }
+
+    /* Ensure buttons don't wrap */
+    #ecosystemButtons .btn {
+        display: inline-block;
+        float: none;
+        white-space: nowrap;
+    }
+
+    #editSection {
+      border-left: 5px solid #ffc107;
+      background-color: #fff9e6;
+    }
   </style>
 </head>
 <body>
@@ -239,11 +278,12 @@
         <button type="button" id="ecoInfoBtn" class="btn btn-primary">🌍 About Ecosystems</button>
         <button type="button" id="webInfoBtn" class="btn btn-dark">🕸️ How to Read Food Webs</button>
     </div>
+    <button type="button" id="statsBtn" class="btn btn-info">📊 Statistics</button>
     <button id="loginBtn" class="btn btn-outline-success">🔑 Log in as Admin</button>
   </div>
 
   <!-- Ecosystem Buttons -->
-  <div id="ecosystemButtons" class="d-flex flex-wrap gap-3 justify-content-center mb-4"></div>
+  <div id="ecosystemButtons" class="d-flex flex-nowrap gap-3 mb-4" style="overflow-x: auto; white-space: nowrap; padding-bottom: 10px; -webkit-overflow-scrolling: touch;"></div>
 
   <!-- Back Button -->
   <div class="text-center mb-3">
@@ -285,12 +325,15 @@
 </div>
 
 <!-- Admin Form Modal -->
+<!-- Admin Form Modal -->
 <div id="adminForm">
   <div class="modal-header">
-    <h3>Create New Food Web</h3>
+    <h3>Admin Dashboard</h3>
     <span class="close-btn" onclick="closeAdminForm()">&times;</span>
   </div>
-    <div id="deleteSection" class="form-section mb-3" style="border-color: #dc3545; display: none;">
+  
+  <!-- Delete Section -->
+  <div id="deleteSection" class="form-section mb-3" style="border-color: #dc3545; display: none;">
     <h4 class="text-danger">🗑️ Delete Food Web</h4>
     <div class="row">
       <div class="col-md-5">
@@ -311,9 +354,48 @@
     </div>
     <div id="deleteMessage" class="mt-2"></div>
   </div>
+  
+  <!-- Edit Section -->
+  <div id="editSection" class="form-section mb-3" style="border-color: #ffc107; display: none;">
+    <h4 class="text-warning">✏️ Edit Food Web</h4>
+    <div class="row">
+      <div class="col-md-4">
+        <label class="form-label">Select Ecosystem</label>
+        <select class="form-control" id="editEcosystemSelect">
+          <option value="">-- Choose ecosystem --</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Select Web to Edit</label>
+        <select class="form-control" id="editWebSelect" disabled>
+          <option value="">-- First select ecosystem --</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">New Name</label>
+        <input type="text" class="form-control" id="editWebName" placeholder="Enter new name" disabled>
+      </div>
+    </div>
+    <div class="row mt-2">
+      <div class="col-md-8">
+        <label class="form-label">New Ecosystem (optional)</label>
+        <select class="form-control" id="editNewEcosystemSelect" disabled>
+          <option value="">-- Keep current ecosystem --</option>
+        </select>
+      </div>
+      <div class="col-md-4 d-flex align-items-end">
+        <button type="button" class="btn btn-warning" id="editWebBtn" disabled onclick="updateWeb()">Update Web</button>
+      </div>
+    </div>
+    <div id="editMessage" class="mt-2"></div>
+  </div>
+  
+  <!-- Create New Web Section -->
+  <h4 class="mb-3">✨ Create New Food Web</h4>
+  
   <form id="webForm">
     <div class="form-section">
-      <h4>Ecosystem</h4>
+      <h5>Ecosystem</h5>
       
       <!-- Option to select existing ecosystem -->
       <div class="mb-3">
@@ -340,7 +422,7 @@
     </div>
 
     <div class="form-section">
-      <h4>Organisms</h4>
+      <h5>Organisms</h5>
       <div id="organismsList">
         <div class="organism-row mb-3">
           <input type="text" class="form-control mb-2" placeholder="Common Name" name="common_name[]" required>
@@ -360,7 +442,7 @@
     </div>
 
     <div class="form-section">
-      <h4>Feeding Relationships</h4>
+      <h5>Feeding Relationships</h5>
       <div id="relationshipsList">
         <div class="relationship-row">
           <div class="d-flex align-items-center gap-2">
@@ -387,7 +469,7 @@
             </div>
             <button type="button" class="btn btn-danger btn-sm" onclick="removeRelationship(this)">Remove</button>
           </div>
-</div>
+        </div>
       </div>
       <button type="button" class="btn btn-secondary" onclick="addRelationship()">+ Add Relationship</button>
     </div>
@@ -489,15 +571,18 @@ function closeLoginModal() {
 
 function showAdminForm() {
   loadEcosystemsForForm();
-  loadEcosystemsForDelete(); // Load ecosystems for delete dropdown
+  loadEcosystemsForDelete(); 
+  loadEcosystemsForEdit();
   showOverlay();
   adminForm.style.display = "block";
   
   // Show delete section if admin is logged in
   if (isAdmin) {
     document.getElementById("deleteSection").style.display = "block";
+    document.getElementById("editSection").style.display = "block";
   } else {
     document.getElementById("deleteSection").style.display = "none";
+    document.getElementById("editSection").style.display = "none";
   }
 }
 
@@ -1419,6 +1504,232 @@ document.getElementById("webForm").onsubmit = async function(e) {
     document.getElementById("formErrors").innerHTML = "Network error: " + error.message;
   }
 };
+// ------------------
+// EDIT WEB FUNCTIONS
+// ------------------
+async function loadEcosystemsForEdit() {
+  const response = await fetch("/ecosystems");
+  const ecosystems = await response.json();
+  
+  // Load into edit ecosystem dropdown
+  const editSelect = document.getElementById("editEcosystemSelect");
+  editSelect.innerHTML = '<option value="">-- Choose ecosystem --</option>';
+  ecosystems.forEach(e => {
+    editSelect.innerHTML += `<option value="${e.id}">${e.name}</option>`;
+  });
+  
+  // Also load into new ecosystem dropdown
+  const newEcoSelect = document.getElementById("editNewEcosystemSelect");
+  newEcoSelect.innerHTML = '<option value="">-- Keep current ecosystem --</option>';
+  ecosystems.forEach(e => {
+    newEcoSelect.innerHTML += `<option value="${e.id}">${e.name}</option>`;
+  });
+}
+
+// Load webs when ecosystem is selected for editing
+document.getElementById("editEcosystemSelect").addEventListener("change", async function(e) {
+  const ecosystemId = e.target.value;
+  const webSelect = document.getElementById("editWebSelect");
+  const webName = document.getElementById("editWebName");
+  const newEcoSelect = document.getElementById("editNewEcosystemSelect");
+  const editBtn = document.getElementById("editWebBtn");
+  
+  if (!ecosystemId) {
+    webSelect.innerHTML = '<option value="">-- First select ecosystem --</option>';
+    webSelect.disabled = true;
+    webName.disabled = true;
+    newEcoSelect.disabled = true;
+    editBtn.disabled = true;
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/ecosystems/${ecosystemId}/webs`);
+    const data = await response.json();
+    
+    webSelect.innerHTML = '<option value="">-- Select web to edit --</option>';
+    data.webs.forEach(web => {
+      webSelect.innerHTML += `<option value="${web.id}">${web.name}</option>`;
+    });
+    webSelect.disabled = false;
+    webName.disabled = true; // Still disabled until web selected
+    newEcoSelect.disabled = true;
+    editBtn.disabled = true;
+  } catch (error) {
+    console.error("Error loading webs:", error);
+  }
+});
+
+// When web is selected, enable edit fields and populate current name
+document.getElementById("editWebSelect").addEventListener("change", async function(e) {
+  const webId = e.target.value;
+  const webName = document.getElementById("editWebName");
+  const newEcoSelect = document.getElementById("editNewEcosystemSelect");
+  const editBtn = document.getElementById("editWebBtn");
+  
+  if (!webId) {
+    webName.disabled = true;
+    newEcoSelect.disabled = true;
+    editBtn.disabled = true;
+    return;
+  }
+  
+  try {
+    // Fetch current web details
+    const response = await fetch(`/food-webs/${webId}/details`);
+    const webData = await response.json();
+    
+    webName.value = webData.name;
+    webName.disabled = false;
+    newEcoSelect.disabled = false;
+    editBtn.disabled = false;
+  } catch (error) {
+    console.error("Error loading web details:", error);
+  }
+});
+
+// Update web function
+async function updateWeb() {
+  const webId = document.getElementById("editWebSelect").value;
+  const newName = document.getElementById("editWebName").value;
+  const newEcosystemId = document.getElementById("editNewEcosystemSelect").value;
+  const editMsg = document.getElementById("editMessage");
+  
+  if (!webId || !newName) {
+    editMsg.innerHTML = '<span class="text-danger">Please fill all required fields</span>';
+    return;
+  }
+  
+  const formData = new FormData();
+  formData.append("name", newName);
+  
+  // If a new ecosystem was selected, use it; otherwise keep current
+  if (newEcosystemId) {
+    formData.append("ecosystem_id", newEcosystemId);
+  } else {
+    // Need to get current ecosystem ID
+    try {
+      const response = await fetch(`/food-webs/${webId}/details`);
+      const webData = await response.json();
+      formData.append("ecosystem_id", webData.ecosystem_id);
+    } catch (error) {
+      editMsg.innerHTML = '<span class="text-danger">Error getting web details</span>';
+      return;
+    }
+  }
+  
+  try {
+    const response = await fetch(`/admin/webs/${webId}`, {
+      method: "PUT",
+      body: formData
+    });
+    
+    if (response.ok) {
+      editMsg.innerHTML = '<span class="text-success">✅ Web updated successfully!</span>';
+      
+      // Refresh the web dropdown
+      const ecosystemId = document.getElementById("editEcosystemSelect").value;
+      const webResponse = await fetch(`/ecosystems/${ecosystemId}/webs`);
+      const data = await webResponse.json();
+      
+      const webSelect = document.getElementById("editWebSelect");
+      webSelect.innerHTML = '<option value="">-- Select web to edit --</option>';
+      data.webs.forEach(web => {
+        webSelect.innerHTML += `<option value="${web.id}">${web.name}</option>`;
+      });
+      
+      // Also refresh the main page buttons
+      loadEcosystemButtons();
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        editMsg.innerHTML = '';
+      }, 3000);
+    } else {
+      const error = await response.json();
+      editMsg.innerHTML = `<span class="text-danger">❌ Error: ${error.detail || "Unknown error"}</span>`;
+    }
+  } catch (error) {
+    console.error("Error:", error);
+    editMsg.innerHTML = '<span class="text-danger">❌ Network error</span>';
+  }
+}
+
+// STATISTICS FUNCTION
+async function showStatistics() {
+    try {
+        const response = await fetch("/stats");
+        const stats = await response.json();
+        
+        let content = `
+            <div class="text-center">
+                <h4>📊 Ecosystem Statistics</h4>
+                <hr>
+                <p><strong>Total Organisms:</strong> ${stats.total_organisms}</p>
+                <p><strong>Total Food Webs:</strong> ${stats.total_webs}</p>
+                <p><strong>Total Ecosystems:</strong> ${stats.total_ecosystems}</p>
+                <p><strong>Avg Prey per Predator:</strong> ${stats.avg_prey_per_predator.toFixed(2)}</p>
+                
+                <h5 class="mt-3">Trophic Distribution</h5>
+                <ul class="list-unstyled">
+        `;
+        
+        stats.trophic_distribution.forEach(item => {
+            content += `<li><strong>${item.trophic_level}:</strong> ${item.count}</li>`;
+        });
+        
+        content += `
+                </ul>
+                
+                <h5 class="mt-3">Most Connected Species</h5>
+                <ul class="list-unstyled">
+        `;
+        
+        stats.most_connected_species.forEach(item => {
+            content += `<li><strong>${item.common_name}:</strong> ${item.connection_count} connections</li>`;
+        });
+        
+        content += `
+                </ul>
+                
+                <h5 class="mt-3">Ecosystem Stats (from View)</h5>
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Ecosystem</th>
+                            <th>Webs</th>
+                            <th>Species</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        stats.ecosystem_stats.forEach(item => {
+            content += `<tr>
+                <td>${item.ecosystem_name}</td>
+                <td>${item.number_of_webs}</td>
+                <td>${item.total_species}</td>
+            </tr>`;
+        });
+        
+        content += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
+        // Show in species details modal (reuse existing modal)
+        document.getElementById("infoModalTitle").innerHTML = "📊 Statistics";
+        document.getElementById("infoModalContent").innerHTML = content;
+        document.getElementById("infoModal").style.display = "block";
+        showOverlay();
+        
+    } catch (error) {
+        console.error("Error fetching stats:", error);
+        alert("Error loading statistics");
+    }
+}
+document.getElementById("statsBtn").onclick = showStatistics;
 
 // CREATE NEW ECOSYSTEM
 async function createNewEcosystem() {

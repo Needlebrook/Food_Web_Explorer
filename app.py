@@ -504,7 +504,98 @@ def create_organism(
 
     return {"message": "Organism created successfully"}
 
+# ============================================================
+# AGGREGATE FUNCTIONS & VIEWS ENDPOINT
+# ============================================================
+@app.get("/stats")
+def get_statistics():
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    stats = {}
+    
+    # 1. Total counts (simple aggregates)
+    cursor.execute("SELECT COUNT(*) as total FROM organisms")
+    stats['total_organisms'] = cursor.fetchone()['total']
+    
+    cursor.execute("SELECT COUNT(*) as total FROM food_webs")
+    stats['total_webs'] = cursor.fetchone()['total']
+    
+    cursor.execute("SELECT COUNT(*) as total FROM ecosystems")
+    stats['total_ecosystems'] = cursor.fetchone()['total']
+    
+    # 2. Aggregate by trophic level
+    cursor.execute("""
+        SELECT trophic_level, COUNT(*) as count 
+        FROM organisms 
+        GROUP BY trophic_level
+    """)
+    stats['trophic_distribution'] = cursor.fetchall()
+    
+    # 3. Average prey per predator
+    cursor.execute("""
+        SELECT COALESCE(AVG(prey_count), 0) as avg_prey_per_predator
+        FROM (
+            SELECT predator_id, COUNT(*) as prey_count
+            FROM feeding_relationships
+            GROUP BY predator_id
+        ) as predator_stats
+    """)
+    result = cursor.fetchone()
+    stats['avg_prey_per_predator'] = result['avg_prey_per_predator'] if result else 0
+    
+    # 4. Most connected species
+    cursor.execute("""
+        SELECT o.common_name, COUNT(*) as connection_count
+        FROM feeding_relationships fr
+        JOIN organisms o ON fr.predator_id = o.id OR fr.prey_id = o.id
+        GROUP BY o.id, o.common_name
+        ORDER BY connection_count DESC
+        LIMIT 5
+    """)
+    stats['most_connected_species'] = cursor.fetchall()
+    
+    # 5. Query from views (demonstrating views work)
+    cursor.execute("SELECT * FROM ecosystem_stats")
+    stats['ecosystem_stats'] = cursor.fetchall()
+    
+    cursor.execute("SELECT * FROM food_web_details")
+    stats['web_details'] = cursor.fetchall()
+    
+    conn.close()
+    return stats
 
+# ============================================================
+# UPDATE FOOD WEB (DML Update operation)
+# ============================================================
+@app.put("/admin/webs/{web_id}")
+def update_food_web(
+    web_id: int,
+    name: str = Form(...),
+    ecosystem_id: int = Form(...)
+):
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute("""
+            UPDATE food_webs 
+            SET name = %s, ecosystem_id = %s
+            WHERE id = %s
+        """, (name, ecosystem_id, web_id))
+        
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Food web not found")
+        
+        conn.commit()
+        return {"message": "Food web updated successfully"}
+        
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+        
 # ============================================================
 # LIST ALL FOOD WEBS
 # ============================================================
