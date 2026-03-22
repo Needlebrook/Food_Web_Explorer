@@ -4,7 +4,7 @@ A web application for exploring and managing ecological food webs across differe
 
 Development Period : February - March 2026
 
-Available at: https://food-web-explorer.onrender.com/
+Available at: https://food-web-explorer.onrender.com/ or https://food-web-explorer.vercel.app/
 
 ## 📋 Project Overview
 
