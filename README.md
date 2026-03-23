@@ -97,18 +97,18 @@ feeding_relationships (id, web_id, predator_id, prey_id, feed_type)
    
 4. Aggregate Functions
 
-    - COUNT() – Total organisms per trophic level
-    - AVG() – Average prey per predator
-    - GROUP BY – Trophic level distribution
+    - COUNT() : Total organisms per trophic level
+    - AVG() : Average prey per predator
+    - GROUP BY - Trophic level distribution
 
 5. Views
-    - ecosystem_stats – Summary of species counts per ecosystem
-    - food_web_details – Web-level statistics
+    - ecosystem_stats : Summary of species counts per ecosystem
+    - food_web_details : Web-level statistics
   
 6. Triggers (Local MySQL, not applicable to TiDB)
 
-    - prevent_producer_predator – Prevents producers from being predators
-    - log_web_changes – Automatically logs food web updates
+    - prevent_producer_predator : Prevents producers from being predators
+    - log_web_changes : Automatically logs food web updates
 
 7. Integrity Constraints
 
