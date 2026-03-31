@@ -84,11 +84,7 @@ def search_species(q: str):
     try:
         query = """
             SELECT DISTINCT common_name, scientific_name
-            FROM (
-                SELECT common_name, scientific_name FROM species_master
-                UNION
-                SELECT common_name, scientific_name FROM organisms
-            ) AS combined
+            FROM  species_master   
             WHERE common_name LIKE %s
             ORDER BY common_name
             LIMIT 8
