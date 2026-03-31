@@ -267,7 +267,23 @@
       border-left: 5px solid #ffc107;
       background-color: #fff9e6;
     }
-  </style>
+
+    .autocomplete-dropdown {
+        position: fixed;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        max-height: 250px;
+        overflow-y: auto;
+        z-index: 10000;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    .dropdown-item:hover {
+        background-color: #e8f5e9;
+        cursor: pointer;
+    }
+      </style>
 </head>
 <body>
 
@@ -425,8 +441,12 @@
       <h5>Organisms</h5>
       <div id="organismsList">
         <div class="organism-row mb-3">
-          <input type="text" class="form-control mb-2" placeholder="Common Name" name="common_name[]" required>
-          <input type="text" class="form-control mb-2" placeholder="Scientific Name" name="scientific_name[]" required>
+          <input type="text" class="form-control mb-2" id="common_name_0" 
+                placeholder="Common Name" name="common_name[]" 
+                autocomplete="off" oninput="searchSpecies(this.value, 0)" required>
+          <input type="text" class="form-control mb-2" id="scientific_name_0" 
+                placeholder="Scientific Name" name="scientific_name[]" 
+                style="background:#f5f5f5" required>
           <select class="form-control mb-2" name="trophic_level[]" required>
             <option value="">Select Trophic Level</option>
             <option value="Producer">Producer</option>
@@ -1019,6 +1039,9 @@ overlay.addEventListener('click', function() {
 
 document.getElementById("loginBtn").onclick = showLoginModal;
 
+function removeAllDropdowns() {
+    document.querySelectorAll('.autocomplete-dropdown').forEach(d => d.remove());
+}
 // DATA VALIDATION FUNCTIONS
 function validateOrganisms(organismRows) {
   const errors = [];
@@ -1190,11 +1213,16 @@ async function loadEcosystemsForForm() {
 
 function addOrganism() {
   const container = document.getElementById("organismsList");
+  const newIndex = document.querySelectorAll(".organism-row").length;
   const newRow = document.createElement("div");
   newRow.className = "organism-row mb-3";
   newRow.innerHTML = `
-    <input type="text" class="form-control mb-2" placeholder="Common Name" name="common_name[]" required>
-    <input type="text" class="form-control mb-2" placeholder="Scientific Name" name="scientific_name[]" required>
+    <input type="text" class="form-control mb-2" id="common_name_${newIndex}" 
+           placeholder="Common Name" name="common_name[]" 
+           autocomplete="off" oninput="searchSpecies(this.value, ${newIndex})" required>
+    <input type="text" class="form-control mb-2" id="scientific_name_${newIndex}" 
+           placeholder="Scientific Name" name="scientific_name[]" 
+           style="background:#f5f5f5" required>
     <select class="form-control mb-2" name="trophic_level[]" required>
       <option value="">Select Trophic Level</option>
       <option value="Producer">Producer</option>
@@ -1207,6 +1235,69 @@ function addOrganism() {
   `;
   container.appendChild(newRow);
   updateRelationshipSelects();
+}
+
+let currentTimeout = null;
+
+async function searchSpecies(query, index) {
+    const commonNameInput = document.getElementById(`common_name_${index}`);
+    const scientificNameInput = document.getElementById(`scientific_name_${index}`);
+    
+    if (currentTimeout) clearTimeout(currentTimeout);
+    if (query.length < 2) return;
+    
+    currentTimeout = setTimeout(async () => {
+        try {
+            const response = await fetch(`/species/search?q=${encodeURIComponent(query)}`);
+            const data = await response.json();
+
+            let dropdown = document.getElementById(`dropdown_${index}`);
+            if (dropdown) dropdown.remove();
+
+            dropdown = document.createElement('div');
+            dropdown.id = `dropdown_${index}`;
+            dropdown.className = 'autocomplete-dropdown';
+
+            const rect = commonNameInput.getBoundingClientRect();
+
+            dropdown.style.position = 'fixed';
+            dropdown.style.top = (rect.bottom + window.scrollY) + 'px';
+            dropdown.style.left = (rect.left + window.scrollX) + 'px';
+            dropdown.style.width = rect.width + 'px';
+            dropdown.style.background = 'white';
+            dropdown.style.border = '1px solid #ddd';
+            dropdown.style.borderRadius = '8px';
+            dropdown.style.zIndex = '10000';
+            dropdown.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+
+            data.forEach(item => {
+                const option = document.createElement('div');
+                option.className = 'dropdown-item';
+                option.style.padding = '10px';
+                option.style.cursor = 'pointer';
+
+                option.innerHTML = `
+                    <strong>${item.common_name}</strong><br>
+                    <small>${item.scientific_name || ''}</small>
+                `;
+
+                option.onclick = () => {
+                    commonNameInput.value = item.common_name;
+                    scientificNameInput.value = item.scientific_name || '';
+                    dropdown.remove();
+                };
+
+                dropdown.appendChild(option);
+            });
+
+            if (data.length > 0) {
+                document.body.appendChild(dropdown);
+            }
+
+        } catch (error) {
+            console.error("Search error:", error);
+        }
+    }, 100);
 }
 
 function removeOrganism(button) {

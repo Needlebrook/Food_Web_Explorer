@@ -74,6 +74,34 @@ def get_organism(organism_id: int):
     
     return organism
 
+# ----------------------------------------
+# SPECIES AUTOCOMPLETE 
+@app.get("/species/search")
+def search_species(q: str):
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        query = """
+            SELECT DISTINCT common_name, scientific_name
+            FROM (
+                SELECT common_name, scientific_name FROM species_master
+                UNION
+                SELECT common_name, scientific_name FROM organisms
+            ) AS combined
+            WHERE common_name LIKE %s
+            ORDER BY common_name
+            LIMIT 8
+        """
+
+        cursor.execute(query, (f"{q}%",))  
+        results = cursor.fetchall()
+
+        return results
+
+    finally:
+        conn.close()
+
 # ----------------------------
 # Admin 
 # ----------------------------
