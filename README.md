@@ -1,6 +1,7 @@
 # 🌿 Food Web Explorer
 
 A web application for exploring and managing ecological food webs across different ecosystems. Built with FastAPI, MySQL/TiDB, and vis-network visualization. Created as the final project for the DBMS course in B.Tech CSE Semester 4.
+<img width="1751" height="886" alt="Screenshot 2026-04-04 164644" src="https://github.com/user-attachments/assets/3215ec10-8c8c-4837-a117-27dab524b4d6" />
 
 Development Period : February - March 2026
 
@@ -36,48 +37,30 @@ Food Web Explorer is an interactive database management system that allows users
   3. Edit existing web :- Use the edit section to rename or move webs between ecosystems
   4. Delete web :- Use the delete section to remove webs (cascade deletes relationships)
 
-## 📈 Statistics Dashboard
-### The statistics endpoint (/stats) provides:
+## Gallery 🖼️
+<img width="1693" height="882" alt="Screenshot 2026-04-04 211956" src="https://github.com/user-attachments/assets/c77a92ed-1908-4f1f-b7fa-26a14460fdb6" />
+On selection of an ecosystem
 
-  - Total counts : Organisms, food webs, ecosystems
-  - Trophic distribution : Counts by trophic level
-  - Average prey per predator : Ecological network metric
-  - Most connected species : Species with most relationships
-  - View data : Data from ecosystem_stats and food_web_details views
+<img width="1694" height="877" alt="Screenshot 2026-04-04 164711" src="https://github.com/user-attachments/assets/67f8d4a7-cc37-46ca-891b-5a5079051a38" />
+On selecting a food web
 
-## 🔒 Data Validation & Integrity
+<img width="1644" height="856" alt="Screenshot 2026-04-04 164734" src="https://github.com/user-attachments/assets/c753fa66-8338-4dd0-93cf-901bc2bf2be8" />
+On selecting a species (node) on a food web
 
-| Layer | Validation | 
-|---|---|
-|Frontend	| JavaScript checks for empty fields, duplicate organisms, valid relationships|
-|Backend	| Python validates trophic hierarchy, feed type consistency, circular relationships|
-|Database	| CHECK constraints, foreign keys, triggers (local MySQL) prevent invalid data|
+<img width="1477" height="872" alt="Screenshot 2026-04-04 164750" src="https://github.com/user-attachments/assets/36fabf9d-8b74-4358-83de-49a00d72b133" />
+<img width="1167" height="825" alt="Screenshot 2026-04-04 164802" src="https://github.com/user-attachments/assets/86815114-2a43-44ba-bbe5-8f9c138fe554" />
+Info boxes for information on how to read food webs
 
-### Validation Rules
+<img width="861" height="738" alt="Screenshot 2026-04-04 164815" src="https://github.com/user-attachments/assets/732e12e2-37cc-4d76-9773-fdbaafff8300" />
+<img width="790" height="722" alt="Screenshot 2026-04-04 164826" src="https://github.com/user-attachments/assets/07d751da-1814-4bf3-bf7c-5500502ae9bb" />
 
-  - Producers cannot be predators
-  - Organisms cannot prey on themselves
-  - Predators must be at higher trophic levels than prey
-  - Herbivores can only eat producers
-  - No circular feeding relationships
+Statistics Overview
 
-## 🗄️ Database Schema
+<img width="1696" height="870" alt="Screenshot 2026-04-04 164925" src="https://github.com/user-attachments/assets/c5f9dc05-8f2c-42a8-99ba-03b7e34ac670" />
+Admin login
 
-The application uses a normalized relational database with five interconnected tables:
-
-```sql
-ecosystems (id, name, description)
-food_webs (id, name, ecosystem_id) → FK references ecosystems
-organisms (id, common_name, scientific_name, trophic_level, image_url)
-web_organisms (web_id, organism_id) → Junction table (M:N relationship)
-feeding_relationships (id, web_id, predator_id, prey_id, feed_type)
-```
-## 🌟 Database Design Highlights 
-
-- **Normalization**: 3NF compliant with no redundancy
-- **Constraints**: PRIMARY KEY, FOREIGN KEY, NOT NULL, UNIQUE, CHECK
-- **Relationships**: One-to-Many (ecosystems → webs), Many-to-Many (webs ↔ organisms)
-- **Triggers**: Prevent invalid feeding relationships (local MySQL)
+<img width="1302" height="858" alt="Screenshot 2026-04-04 164940" src="https://github.com/user-attachments/assets/d726b480-9f73-4970-8014-23d9c0abf180" />
+For creating, altering or deleting a food web (restricted to admins)
 
 ## 📊 DBMS Concepts Demonstrated
 
@@ -115,6 +98,49 @@ feeding_relationships (id, web_id, predator_id, prey_id, feed_type)
     - Foreign key constraints with CASCADE DELETE
     - NOT NULL constraints on required fields
     - UNIQUE constraint on junction table
+
+## 🔒 Data Validation & Integrity
+
+| Layer | Validation | 
+|---|---|
+|Frontend	| JavaScript checks for empty fields, duplicate organisms, valid relationships|
+|Backend	| Python validates trophic hierarchy, feed type consistency, circular relationships|
+|Database	| CHECK constraints, foreign keys, triggers (local MySQL) prevent invalid data|
+
+### Validation Rules
+
+  - Producers cannot be predators
+  - Organisms cannot prey on themselves
+  - Predators must be at higher trophic levels than prey
+  - Herbivores can only eat producers
+  - No circular feeding relationships
+
+## 🗄️ Database Schema
+
+The application uses a normalized relational database with five interconnected tables:
+
+```sql
+ecosystems (id, name, description)
+food_webs (id, name, ecosystem_id) → FK references ecosystems
+organisms (id, common_name, scientific_name, trophic_level, image_url)
+web_organisms (web_id, organism_id) → Junction table (M:N relationship)
+feeding_relationships (id, web_id, predator_id, prey_id, feed_type)
+```
+## 🌟 Database Design Highlights 
+
+- **Normalization**: 3NF compliant with no redundancy
+- **Constraints**: PRIMARY KEY, FOREIGN KEY, NOT NULL, UNIQUE, CHECK
+- **Relationships**: One-to-Many (ecosystems → webs), Many-to-Many (webs ↔ organisms)
+- **Triggers**: Prevent invalid feeding relationships (local MySQL)
+
+## 📈 Statistics Dashboard
+### The statistics endpoint (/stats) provides:
+
+  - Total counts : Organisms, food webs, ecosystems
+  - Trophic distribution : Counts by trophic level
+  - Average prey per predator : Ecological network metric
+  - Most connected species : Species with most relationships
+  - View data : Data from ecosystem_stats and food_web_details views
 
 ## 🔌API endpoints
 
