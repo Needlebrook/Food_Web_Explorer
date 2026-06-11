@@ -1,6 +1,6 @@
 # 🌿 Food Web Explorer
 
-A web application for exploring and managing ecological food webs across different ecosystems. Built with FastAPI, MySQL/TiDB, and vis-network visualization. Created as the final project for the DBMS course in B.Tech CSE Semester 4.
+A web application for exploring and managing ecological food webs across different ecosystems. This enables users to visualize predator-prey relationships, analyze ecosystem structures, and interact with food webs through an intuitive graphical interface. Built with FastAPI, MySQL/TiDB, and vis-network visualization. Created as the final project for the DBMS course in B.Tech CSE Semester 4.
 <img width="1751" height="886" alt="Screenshot 2026-04-04 164644" src="https://github.com/user-attachments/assets/3215ec10-8c8c-4837-a117-27dab524b4d6" />
 
 Development Period : February - March 2026
